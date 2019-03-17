@@ -22,7 +22,7 @@ using std::vector;
 #define SAFE_DISTANCE   ((float)30.0)
 #define VELOCITY_LIMIT  ((float)49.5)
 #define KMS_PER_MILE    ((float)1.60934)
-#define VEL_UPDATE_INC  ((float)0.35)
+#define VEL_UPDATE_INC  ((float)0.224)
 #define VEL_UPDATE_DEC  ((float)0.224)
 #define SECONDS_PER_HOUR (3600)
 
@@ -161,7 +161,7 @@ int main() {
                 } 
 
                 // Check the cars behind our car or parallel 
-                if(   ((check_car_s < car_s) && (car_s - check_car_s < SAFE_DISTANCE * 0.75))
+                if(   ((check_car_s < car_s) && (car_s - check_car_s < SAFE_DISTANCE))
                     ||(check_car_s == car_s)
                   )
                 {
@@ -185,7 +185,7 @@ int main() {
                 {
                   lane = MID_LANE_ID;
                   std::cout << " The lane will change to : Middle Lane. "<< std::endl;
-                }                      
+                }                     
               break;
 
               case MID_LANE_ID:
@@ -207,12 +207,16 @@ int main() {
                   std::cout << " The lane will change to : Middle Lane. "<< std::endl;
                 }  
               break;
-            }
-
-            
+            }    
+                  
           } else if( ref_vel < VELOCITY_LIMIT)
           {
             ref_vel += VEL_UPDATE_INC;
+
+            if(ref_vel > VELOCITY_LIMIT )
+            {
+              ref_vel = VELOCITY_LIMIT + 0.2;
+            }
           }
 
           std::cout << "car_s is %f" << car_s << std::endl;
