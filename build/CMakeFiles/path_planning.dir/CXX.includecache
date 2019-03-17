@@ -855,6 +855,18 @@ helpers.h
 /Users/loopat/self-driving/term3/CarND-Term3-P1-Path-Planning-Project-master/src/helpers.h
 json.hpp
 /Users/loopat/self-driving/term3/CarND-Term3-P1-Path-Planning-Project-master/src/json.hpp
+spline.h
+/Users/loopat/self-driving/term3/CarND-Term3-P1-Path-Planning-Project-master/src/spline.h
+
+/Users/loopat/self-driving/term3/CarND-Term3-P1-Path-Planning-Project-master/src/spline.h
+cstdio
+-
+cassert
+-
+vector
+-
+algorithm
+-
 
 /usr/local/include/pthread-barrier.h
 errno.h

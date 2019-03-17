@@ -7,11 +7,24 @@
 #include "Eigen-3.3/Eigen/QR"
 #include "helpers.h"
 #include "json.hpp"
+#include "spline.h"
 
 // for convenience
 using nlohmann::json;
 using std::string;
 using std::vector;
+
+#define LEFT_LANE_ID  0
+#define MID_LANE_ID   1u
+#define RIGHT_LANE_ID 2u
+#define LANE_NUM      3u
+
+#define SAFE_DISTANCE   ((float)30.0)
+#define VELOCITY_LIMIT  ((float)49.5)
+#define KMS_PER_MILE    ((float)1.60934)
+#define VEL_UPDATE_INC  ((float)0.35)
+#define VEL_UPDATE_DEC  ((float)0.224)
+#define SECONDS_PER_HOUR (3600)
 
 int main() {
   uWS::Hub h;
@@ -90,6 +103,182 @@ int main() {
 
           json msgJson;
 
+          // reference velocity
+          static double ref_vel = 0; //mph:miles per hour
+
+          // start lane: 
+          //   ||             |             |             ||
+          //   ||---lane  0---|---lane  1---|---lane  2---||
+          //   ||             |    |^^^|    |             ||
+          //   ||             |    |car|    |             ||
+          //   ||             |    |___|    |             ||
+          //   ||             |             |             ||
+
+          static int lane = MID_LANE_ID;
+
+          double segment_distance = 30.0; 
+          double lane_width = 4.0;
+
+          bool too_close_front[LANE_NUM] = {false, false, false};
+          bool too_close_behind_parallel[LANE_NUM] = {false, false, false};
+
+          int prev_size = previous_path_x.size();
+          
+          /****************************/
+          if(prev_size > 0)
+          {
+            car_s = end_path_s;
+          }
+          /****************************/
+
+
+          for(int i = 0; i < sensor_fusion.size(); i ++)
+          {
+            float d = sensor_fusion[i][6];
+
+            // check all the lanes
+            for(int lane_index = 0; lane_index < LANE_NUM; lane_index ++)
+            {
+              if(  (d > (2 + lane_width * lane_index - 2)) 
+                && (d < (2 + lane_width * lane_index + 2))
+                )
+              {
+                double x = sensor_fusion[i][1];
+                double y = sensor_fusion[i][2];
+
+                double vx = sensor_fusion[i][3];
+                double vy = sensor_fusion[i][4];
+
+                double check_speed = sqrt(pow(vx,2) + pow(vy,2));
+                double check_car_s = sensor_fusion[i][5];
+
+                check_car_s += ((double)prev_size * 0.02 * check_speed);
+
+                // Check the front cars
+                if((check_car_s > car_s) && (check_car_s - car_s) < SAFE_DISTANCE)
+                {
+                  too_close_front[lane_index] = true;
+                } 
+
+                // Check the cars behind our car or parallel 
+                if(   ((check_car_s < car_s) && (car_s - check_car_s < SAFE_DISTANCE * 0.75))
+                    ||(check_car_s == car_s)
+                  )
+                {
+                  too_close_behind_parallel[lane_index] = true;
+                }               
+              }
+            }
+          }
+
+          std::cout << "current lane is : " << lane << std::endl;
+
+          if(too_close_front[lane])
+          {
+            ref_vel -= VEL_UPDATE_DEC;
+
+            //change lane
+            switch(lane)
+            {
+              case LEFT_LANE_ID:
+                if(!too_close_front[MID_LANE_ID] && !too_close_behind_parallel[MID_LANE_ID])
+                {
+                  lane = MID_LANE_ID;
+                  std::cout << " The lane will change to : Middle Lane. "<< std::endl;
+                }                      
+              break;
+
+              case MID_LANE_ID:
+                if(!too_close_front[LEFT_LANE_ID] && !too_close_behind_parallel[LEFT_LANE_ID])
+                {
+                  lane = LEFT_LANE_ID;
+                  std::cout << " The lane will change to : Left Lane." << std::endl;
+                } else if(!too_close_front[RIGHT_LANE_ID] && !too_close_behind_parallel[RIGHT_LANE_ID])
+                {
+                  lane = RIGHT_LANE_ID;
+                  std::cout << " The lane will change to : Right Lane." << std::endl;
+                }
+              break;
+
+              case RIGHT_LANE_ID:
+                if(!too_close_front[MID_LANE_ID] && !too_close_behind_parallel[MID_LANE_ID])
+                {
+                  lane = MID_LANE_ID;
+                  std::cout << " The lane will change to : Middle Lane. "<< std::endl;
+                }  
+              break;
+            }
+
+            
+          } else if( ref_vel < VELOCITY_LIMIT)
+          {
+            ref_vel += VEL_UPDATE_INC;
+          }
+
+          std::cout << "car_s is %f" << car_s << std::endl;
+
+          vector<double> ptsx;
+          vector<double> ptsy;
+
+          // reference x,y,yaw
+          double ref_x = car_x;
+          double ref_y = car_y;
+          double ref_yaw = deg2rad(car_yaw);
+
+          if(prev_size < 2)
+          {
+            // Use the two points that tangment to the car
+            double prev_car_x = car_x - cos(car_yaw);
+            double prev_car_y = car_y - sin(car_yaw);
+
+            ptsx.push_back(prev_car_x);
+            ptsx.push_back(car_x);
+            
+            ptsy.push_back(prev_car_y);
+            ptsy.push_back(car_y);
+          } else
+          {
+            ref_x = previous_path_x[prev_size - 1];
+            ref_y = previous_path_y[prev_size - 1];
+
+            double ref_x_prev = previous_path_x[prev_size - 2];
+            double ref_y_prev = previous_path_y[prev_size - 2];
+
+            ref_yaw = atan2(ref_y - ref_y_prev, ref_x - ref_x_prev);
+
+            ptsx.push_back(ref_x_prev);
+            ptsx.push_back(ref_x);
+
+            ptsy.push_back(ref_y_prev);
+            ptsy.push_back(ref_y);
+          }
+
+          vector<double> next_wp0 = getXY(car_s + 1 * segment_distance, (2 + lane_width * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+          vector<double> next_wp1 = getXY(car_s + 2 * segment_distance, (2 + lane_width * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+          vector<double> next_wp2 = getXY(car_s + 3 * segment_distance, (2 + lane_width * lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+
+          ptsx.push_back(next_wp0[0]);
+          ptsx.push_back(next_wp1[0]);
+          ptsx.push_back(next_wp2[0]);
+
+          ptsy.push_back(next_wp0[1]);
+          ptsy.push_back(next_wp1[1]);
+          ptsy.push_back(next_wp2[1]);
+
+          //Transmission to local car's coordinates.
+          for(int i = 0; i < ptsx.size(); i++)
+          {
+            double shift_x = ptsx[i] - ref_x;
+            double shift_y = ptsy[i] - ref_y;
+
+            ptsx[i] = shift_x * cos(0 - ref_yaw) - shift_y * sin( 0 - ref_yaw);
+            ptsy[i] = shift_x * sin(0 - ref_yaw) + shift_y * cos( 0 - ref_yaw);
+
+          }
+
+          tk::spline s;
+          s.set_points(ptsx, ptsy);
+          
           vector<double> next_x_vals;
           vector<double> next_y_vals;
 
@@ -97,6 +286,43 @@ int main() {
            * TODO: define a path made up of (x,y) points that the car will visit
            *   sequentially every .02 seconds
            */
+
+          // Start with all the previous path points from last time.
+          for(int i = 0; i < previous_path_x.size(); i ++)
+          {
+            next_x_vals.push_back(previous_path_x[i]);
+            next_y_vals.push_back(previous_path_y[i]);
+          }
+
+          // Calculate the value of N, N * 0.02 * ref_vel = d (30m)
+          double target_x = 30.0;
+          double target_y = s(target_x);
+          double target_dist = sqrt(pow(target_x, 2) + pow(target_y, 2));
+
+          double x_add_on = 0.0;
+
+          // i form 1
+          for(int i = 1; i <= 50 - previous_path_x.size(); i ++)
+          {
+            double N = target_dist / (0.02 * (ref_vel * 1000 * KMS_PER_MILE / SECONDS_PER_HOUR));
+            double x_point = x_add_on + target_x / N;
+            double y_point = s(x_point);
+
+            x_add_on = x_point;
+
+            double x_ref = x_point;
+            double y_ref = y_point;
+
+            // Transmission to the global coordinates
+            x_point = x_ref * cos(ref_yaw) - y_ref * sin(ref_yaw);
+            y_point = x_ref * sin(ref_yaw) + y_ref * cos(ref_yaw);
+
+            x_point += ref_x;
+            y_point += ref_y;
+
+            next_x_vals.push_back(x_point);
+            next_y_vals.push_back(y_point);
+          }
 
 
           msgJson["next_x"] = next_x_vals;
