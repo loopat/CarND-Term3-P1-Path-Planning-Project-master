@@ -24,7 +24,7 @@ using std::vector;
 #define KMS_PER_MILE    ((float)1.60934)
 #define VEL_UPDATE_INC  ((float)0.224)
 #define VEL_UPDATE_DEC  ((float)0.224)
-#define SECONDS_PER_HOUR (3600)
+#define SECONDS_PER_HOUR (3600u)
 
 int main() {
   uWS::Hub h;
@@ -215,11 +215,11 @@ int main() {
 
             if(ref_vel > VELOCITY_LIMIT )
             {
-              ref_vel = VELOCITY_LIMIT + 0.2;
+              ref_vel = VELOCITY_LIMIT;
             }
           }
 
-          std::cout << "car_s is %f" << car_s << std::endl;
+          std::cout << "car_s is " << car_s << std::endl;
 
           vector<double> ptsx;
           vector<double> ptsy;
