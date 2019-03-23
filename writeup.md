@@ -77,7 +77,7 @@ Path planning points are generated in this part.
 
 ### Part 3. Test
 
- After compiling and running, some test screenshots are here. The car can run a whole loop with collosing or beyond the acceleleration and Jerk.
+ After compiling and running, some test screenshots are here. The car can run a whole loop without collision or beyond the acceleleration and Jerk.
  
  ![avatar](./4.29miles.png)
  ![avatar](./8.58miles.png)
