@@ -34,10 +34,10 @@ In order to realized the goal that make the car to safely navigate around a virt
   
   As we had got the indicators of all the 3 lanes to show that if there are cars in the front or parallel or behind of our car, the lane change strategy can be decided.
   
-  If we found that our car is too close to the front car in our current lane, we may change our car's lane. We will decrease our car's speed to avoid collision with the front car first, and then we may consider to change our car's lane. If not, we may increase our car speed but shall not beyond the *VELOCITY_LIMIT*. In order that experience larger total acceleration and jerk that is greater, *VEL_UPDATE_INC* and *VEL_UPDATE_DEC* are defined and are used for decrease the speed or increase the speed.
+  If we found that our car is too close to the front car in our current lane, we may change our car's lane. We will decrease our car's speed to avoid collision with the front car first, and then we may consider to change our car's lane. If not, we may increase our car speed but shall not beyond the *VELOCITY_LIMIT*. In order that not experience larger total acceleration and jerk that is greater, *VEL_UPDATE_INC* and *VEL_UPDATE_DEC* are defined and are used for decrease the speed or increase the speed.
   
   - If our car was driving in the left lane, we will check the two indicators of the middle lane we got in (1). If both of the two indicators of middle lane are false, we will change our car to the middle lane.
-  - If our car was driving in the middle lane, we will check the two indicators of the left lane. If bothe of the two indicators of left lane are false, we will change our car to the left lane. Otherwize, we will check the two indicators of right lane. The same handling with the previous description was adopted.
+  - If our car was driving in the middle lane, we will check the two indicators of the left lane. If both of the two indicators of left lane are false, we will change our car to the left lane. Otherwize, we will check the two indicators of right lane. The same handling with the previous description was adopted.
   - If our car was driving in the right lane, we will check the two indicators of the middle lane we got in (1). If both of the two indicators of middle lane are false, we will change our car to the middle lane.
   
   The code is in line 135 - line 220.
@@ -59,15 +59,15 @@ Path planning points are generated in this part.
     
 - Handling
   
- In order to generate path planning points, a spline function will be used and 5 points are used to obtaine the spline function.
+ In order to generate path planning points, a spline function will be used and 5 points are used to obtain the spline function.
 
- The 5 points are 2 points in the previous path and 3 points we defined which's distance with our car are 30ms, 60ms, 90ms.
+ The 5 points are 2 points in the previous path and 3 points we defined which's distance to our car are 30ms, 60ms, 90ms.
  
  We transmit the 5 points to the local coordinates, and then spline was used. I had added *#include "spline.h"* in line 10. Based on the 5 points and *tk::spline*, we can get the spline function which defined in the code as *s*.
   
  As we hand got the spline function *s*, we can use it to generate the path planning points. Using spline will make the path smoothly. Here, another thing to make the path smoothly is that the previous path points are used. 
  
- After the path planing points had been obtained, these points shall be transmit to global coordinates. At last, these points are push back into the vector *next_x_vals* and *next_y_vals*.
+ After the path planing points had been obtained, these points shall be transmitted to global coordinates. At last, these points are push back into the vector *next_x_vals* and *next_y_vals*.
  
 - Outputs
 
@@ -77,7 +77,7 @@ Path planning points are generated in this part.
 
 ### Part 3. Test
 
- After compiling and run, some test screenshots are here. The car can run a whole loop with collosing or beyond the acceleleration and Jerk.
+ After compiling and running, some test screenshots are here. The car can run a whole loop with collosing or beyond the acceleleration and Jerk.
  
  ![avatar](./4.29miles.png)
  ![avatar](./8.58miles.png)
